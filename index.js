@@ -61,12 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   //инициализиране на AI
   async function initializeSession() {
-    const canCreate = await window.ai.canCreateTextSession();
+    const canCreate = (await ai.assistant.capabilities()).available; 
     if (canCreate === "no") {
       console.error("The model is not available on this device..");
       return null;
     }
-    const session = await window.ai.createTextSession();
+    const session = await ai.assistant.create(); ;
     return session;
   }
 
@@ -185,20 +185,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // инициализиране на AI при обобщаване
   async function initializeSummarizeSession() {
-    const canCreate = await window.ai.canCreateTextSession();
-    if (canCreate === "no") {
-      console.error("The model is not available on this device.");
-      return null;
+    if (!window.ai) {
+        console.error("AI service is not available.");
+        return null;
     }
-    const session = await window.ai.createTextSession();
-    return session;
-  }
+
+    const canSummarize = await ai.summarizer.capabilities();
+    if (canSummarize && canSummarize.available !== 'no') {
+        let summarizer;
+        if (canSummarize.available === 'readily') {
+            summarizer = await ai.summarizer.create();
+        } else {
+            summarizer = await ai.summarizer.create();
+            summarizer.addEventListener('downloadprogress', (e) => {
+                console.log(e.loaded, e.total);
+            });
+            await summarizer.ready;
+        }
+        return summarizer;
+    } else {
+        console.error("Summarizer is not available.");
+        return null;
+    }
+}
 
   // обобщение на текста
-  async function summarizeText(session, text) {
+  async function summarizeText(summarizer, text) {
     const prompt = `Summarize: ${text}`;
-    const result = await session.prompt(prompt);
-    return result;
+    const result = await summarizer.summarize(prompt);
   }
 
   // обобщение при натискане на бутона
